@@ -12,7 +12,7 @@ pip freeze > requirements.txt
 # Start server
 
 ```
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
 # Get Started.
