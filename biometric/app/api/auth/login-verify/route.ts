@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
+import jwt from "jsonwebtoken";
 
 export async function POST(req: Request) {
   try {
@@ -45,10 +46,12 @@ export async function POST(req: Request) {
       user.currentChallenge = undefined;
       await user.save();
 
-      // SUCCESS:  JWT or Session Cookie
-      //  const token = signToken(user._id);
+      // SUCCESS: Generate JWT
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
+        expiresIn: "1h",
+      });
 
-      return NextResponse.json({ verified: true });
+      return NextResponse.json({ verified: true, token });
     }
 
     return NextResponse.json({ verified: false }, { status: 400 });
