@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth"; // Import the helper
 
-export async function GET(req: Request) {
+export async function GET(req: AuthorizedRequest) { // Change req type to AuthorizedRequest
+  // Authorize request for admin role
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult; // Return error response if not authorized
+  }
+
   try {
     await dbConnect();
 
