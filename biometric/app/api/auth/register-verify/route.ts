@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: user.currentChallenge,
-      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000",
+      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000", // In production, ensure this is set to your secure (HTTPS) origin
       expectedRPID: process.env.RP_ID || "localhost",
     });
 
