@@ -40,6 +40,14 @@ export async function POST(req: Request) {
 
     if (verification.verified && verification.registrationInfo) {
       const { credential } = verification.registrationInfo;
+      const credentialIdBytes =
+        typeof credential.id === "string"
+          ? isoBase64URL.toBuffer(credential.id)
+          : credential.id;
+      const publicKeyBytes =
+        credential.publicKey instanceof Uint8Array
+          ? credential.publicKey
+          : new Uint8Array(credential.publicKey);
 
       const newAuthenticator: any = { // Use 'any' temporarily for flexibility
         credentialID: Buffer.from(credentialID),

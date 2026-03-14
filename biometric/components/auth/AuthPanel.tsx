@@ -3,12 +3,13 @@
 import Field from "./Field";
 import ModeToggle from "./ModeToggle";
 import StatusBanner from "./StatusBanner";
+import ValidationSummary from "./ValidationSummary";
 import { useAuthPanel } from "@/hooks/useAuthPanel";
 
 export default function AuthPanel() {
   const {
     accountNumber,
-    canSubmitSignup,
+    currentErrors,
     email,
     handleLogin,
     handleRegister,
@@ -25,6 +26,8 @@ export default function AuthPanel() {
     setPassword,
     setPhoneNumber,
     status,
+    showValidation,
+    validationSummary,
     webauthnSupported,
   } = useAuthPanel();
 
@@ -52,6 +55,7 @@ export default function AuthPanel() {
             value={name}
             onChange={setName}
             placeholder="Jane Doe"
+            error={showValidation ? currentErrors.name : undefined}
           />
           <Field
             label="Phone Number"
@@ -59,6 +63,7 @@ export default function AuthPanel() {
             value={phoneNumber}
             onChange={setPhoneNumber}
             placeholder="0700000000"
+            error={showValidation ? currentErrors.phoneNumber : undefined}
           />
           <Field
             label="National ID"
@@ -66,12 +71,14 @@ export default function AuthPanel() {
             value={nationalID}
             onChange={setNationalID}
             placeholder="12345678"
+            error={showValidation ? currentErrors.nationalID : undefined}
           />
           <Field
             label="Account Number"
             value={accountNumber}
             onChange={setAccountNumber}
             placeholder="1234567890"
+            error={showValidation ? currentErrors.accountNumber : undefined}
           />
         </>
       )}
@@ -82,6 +89,7 @@ export default function AuthPanel() {
         value={email}
         onChange={setEmail}
         placeholder="you@example.com"
+        error={showValidation ? currentErrors.email : undefined}
       />
       <Field
         label="Password"
@@ -89,6 +97,7 @@ export default function AuthPanel() {
         value={password}
         onChange={setPassword}
         placeholder="At least 6 characters"
+        error={showValidation ? currentErrors.password : undefined}
       />
 
       <div className="flex gap-3">
@@ -96,7 +105,7 @@ export default function AuthPanel() {
           <button
             className="flex-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             onClick={handleRegister}
-            disabled={!canSubmitSignup || status.kind === "busy"}
+            disabled={status.kind === "busy"}
           >
             Create Account
           </button>
@@ -104,12 +113,14 @@ export default function AuthPanel() {
           <button
             className="flex-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             onClick={handleLogin}
-            disabled={!email.trim() || status.kind === "busy"}
+            disabled={status.kind === "busy"}
           >
             Log In
           </button>
         )}
       </div>
+
+      <ValidationSummary messages={validationSummary} />
 
       {webauthnSupported === false && mode === "login" && (
         <p className="text-xs text-zinc-600">
