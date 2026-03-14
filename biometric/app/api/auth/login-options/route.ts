@@ -1,36 +1,43 @@
 import { NextResponse } from "next/server";
-import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
+import { buildAuthenticationOptions } from "@/lib/auth/webauthn";
+import { parseJson, loginOptionsSchema } from "@/lib/auth/validators";
+import { setChallenge } from "@/lib/auth/challenges";
+import { getRpConfig } from "@/lib/auth/config";
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email } = await parseJson(req, loginOptionsSchema);
     await dbConnect();
 
     const user = await User.findOne({ email });
     if (!user || user.authenticators.length === 0) {
       return NextResponse.json(
-        { error: "No passkeys registered for this user" },
+        { error: "Unable to initiate login" },
         { status: 404 },
       );
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID: process.env.RP_ID || "localhost",
-      allowCredentials: user.authenticators.map((auth: any) => ({
-        id: auth.credentialID,
-        type: "public-key",
-        transports: auth.transports,
-      })),
-      userVerification: "preferred",
+    const options = await buildAuthenticationOptions({
+      authenticators: user.authenticators ?? [],
     });
 
-    user.currentChallenge = options.challenge;
-    await user.save();
+    const { rpId, expectedOrigin } = getRpConfig();
+    await setChallenge({
+      email: user.email,
+      userId: user._id.toString(),
+      purpose: "login",
+      challenge: options.challenge,
+      rpId,
+      origin: expectedOrigin,
+    });
 
-    return NextResponse.json(options);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ options });
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to initiate login" },
+      { status: 500 },
+    );
   }
 }
