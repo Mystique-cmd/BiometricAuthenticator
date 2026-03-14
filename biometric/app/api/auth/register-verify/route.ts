@@ -1,17 +1,26 @@
 import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
-import { parseJson, registerVerifySchema } from "@/lib/auth/validators";
-import { consumeChallenge } from "@/lib/auth/challenges";
-import { verifyRegistration } from "@/lib/auth/webauthn";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { z } from "zod";
+
+// Define the Zod schema for the request body
+const RegisterVerifyRequestSchema = z.object({
+  email: z.string().email(),
+  body: z.any(), // The WebAuthn response body
+  fingerprintTemplate: z.string().optional(), // Base64 encoded fingerprint template
+  description: z.string().optional(),
+  isBiometric: z.boolean().optional().default(false),
+});
 
 export async function POST(req: Request) {
   try {
-    const { email, password, credential } = await parseJson(
-      req,
-      registerVerifySchema,
-    );
+    const requestBody = await req.json();
+
+    // Validate the request body using the schema
+    const validatedBody = RegisterVerifyRequestSchema.parse(requestBody);
+
+    const { email, body, fingerprintTemplate, description, isBiometric } = validatedBody;
+
     await dbConnect();
 
     const user = await User.findOne({ email });
@@ -22,41 +31,37 @@ export async function POST(req: Request) {
       );
     }
 
-    const challenge = await consumeChallenge(email, "register");
-    if (!challenge) {
-      return NextResponse.json(
-        { error: "Unable to verify registration" },
-        { status: 400 },
-      );
-    }
-
-    if (user.password) {
-      const matches = await verifyPassword(password, user.password);
-      if (!matches) {
-        return NextResponse.json(
-          { error: "Unable to verify registration" },
-          { status: 400 },
-        );
-      }
-    } else {
-      user.password = await hashPassword(password);
-    }
-
-    const verification = await verifyRegistration(
-      credential,
-      challenge.challenge,
-    );
+    const verification = await verifyRegistrationResponse({
+      response: body,
+      expectedChallenge: user.currentChallenge,
+      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000", // In production, ensure this is set to your secure (HTTPS) origin
+      expectedRPID: process.env.RP_ID || "localhost",
+    });
 
     if (verification.verified && verification.registrationInfo) {
       const { credential } = verification.registrationInfo;
 
-      user.authenticators.push({
-        credentialID: Buffer.from(credential.id),
-        credentialPublicKey: Buffer.from(credential.publicKey),
-        counter: credential.counter,
+      const newAuthenticator: any = { // Use 'any' temporarily for flexibility
+        credentialID: Buffer.from(credentialID),
+        credentialPublicKey: Buffer.from(credentialPublicKey),
+        counter,
         credentialDeviceType: verification.registrationInfo.credentialType,
         credentialBackedUp: verification.registrationInfo.credentialBackedUp,
-      });
+      };
+
+      if (fingerprintTemplate) {
+        newAuthenticator.fingerprintTemplate = Buffer.from(fingerprintTemplate, 'base64');
+        newAuthenticator.isBiometric = true; // Automatically set to true if template is provided
+      }
+      if (description) {
+        newAuthenticator.description = description;
+      }
+      if (isBiometric !== undefined) {
+        newAuthenticator.isBiometric = isBiometric;
+      }
+
+
+      user.authenticators.push(newAuthenticator);
 
       await user.save();
 
@@ -64,10 +69,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ verified: false }, { status: 400 });
-  } catch {
-    return NextResponse.json(
-      { error: "Unable to verify registration" },
-      { status: 500 },
-    );
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+        return NextResponse.json({ error: error.errors }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
