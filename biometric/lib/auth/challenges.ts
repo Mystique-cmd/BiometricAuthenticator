@@ -29,7 +29,7 @@ export async function setChallenge(input: SetChallengeInput) {
       createdAt: new Date(),
       expiresAt,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 }
 

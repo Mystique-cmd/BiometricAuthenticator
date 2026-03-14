@@ -6,6 +6,10 @@ import {
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
+import type {
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+} from "@simplewebauthn/browser";
 import {
   getLoginOptions,
   getRegisterOptions,
@@ -19,6 +23,7 @@ export type StatusKind = "idle" | "busy" | "success" | "error";
 export type Status = { kind: StatusKind; message: string };
 
 type Mode = "signup" | "login";
+type FieldErrors = Record<string, string>;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Request failed.";
@@ -32,6 +37,9 @@ export function useAuthPanel() {
   const [nationalID, setNationalID] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [mode, setMode] = useState<Mode>("signup");
+  const [attempted, setAttempted] = useState<{ signup: boolean; login: boolean }>(
+    { signup: false, login: false },
+  );
   const [status, setStatus] = useState<Status>({
     kind: "idle",
     message: "",
@@ -44,23 +52,40 @@ export function useAuthPanel() {
     setWebauthnSupported(browserSupportsWebAuthn());
   }, []);
 
-  const canSubmit = useMemo(() => {
-    return email.trim().length > 0 && password.trim().length >= 6;
-  }, [email, password]);
-
-  const canSubmitSignup = useMemo(() => {
-    return (
-      name.trim().length >= 3 &&
-      phoneNumber.trim().length >= 10 &&
-      email.trim().length > 0 &&
-      nationalID.trim().length >= 8 &&
-      accountNumber.trim().length >= 10 &&
-      password.trim().length >= 6
-    );
+  const signupErrors = useMemo(() => {
+    const errors: FieldErrors = {};
+    if (name.trim().length < 3) errors.name = "Full name is required.";
+    if (phoneNumber.trim().length < 10)
+      errors.phoneNumber = "Phone number is required.";
+    if (!email.trim()) errors.email = "Email is required.";
+    if (nationalID.trim().length < 8)
+      errors.nationalID = "National ID is required.";
+    if (accountNumber.trim().length < 10)
+      errors.accountNumber = "Account number is required.";
+    if (password.trim().length < 6)
+      errors.password = "Password must be at least 6 characters.";
+    return errors;
   }, [name, phoneNumber, email, nationalID, accountNumber, password]);
 
+  const loginErrors = useMemo(() => {
+    const errors: FieldErrors = {};
+    if (!email.trim()) errors.email = "Email is required.";
+    if (webauthnSupported === false && password.trim().length < 6) {
+      errors.password = "Password must be at least 6 characters.";
+    }
+    return errors;
+  }, [email, password, webauthnSupported]);
+
+  const currentErrors = mode === "signup" ? signupErrors : loginErrors;
+  const hasErrors = Object.keys(currentErrors).length > 0;
+  const showValidation = attempted[mode] && hasErrors;
+  const validationSummary = showValidation ? Object.values(currentErrors) : [];
+
   async function handleRegister() {
-    if (!canSubmitSignup) return;
+    if (Object.keys(signupErrors).length > 0) {
+      setAttempted((prev) => ({ ...prev, signup: true }));
+      return;
+    }
     if (webauthnSupported === false) {
       setStatus({
         kind: "error",
@@ -94,8 +119,8 @@ export function useAuthPanel() {
       }
 
       const options =
-        optionsRes.json.options as Parameters<typeof startRegistration>[0];
-      const credential = await startRegistration(options);
+        optionsRes.json.options as PublicKeyCredentialCreationOptionsJSON;
+      const credential = await startRegistration({ optionsJSON: options });
 
       const verifyRes = await verifyRegister({ email, password, credential });
       if (!verifyRes.res.ok || !verifyRes.json.verified) {
@@ -114,7 +139,10 @@ export function useAuthPanel() {
   }
 
   async function handleLogin() {
-    if (!email.trim()) return;
+    if (Object.keys(loginErrors).length > 0) {
+      setAttempted((prev) => ({ ...prev, login: true }));
+      return;
+    }
 
     if (!webauthnSupported) {
       await handlePasswordFallback();
@@ -131,8 +159,8 @@ export function useAuthPanel() {
       }
 
       const options =
-        optionsRes.json.options as Parameters<typeof startAuthentication>[0];
-      const credential = await startAuthentication(options);
+        optionsRes.json.options as PublicKeyCredentialRequestOptionsJSON;
+      const credential = await startAuthentication({ optionsJSON: options });
 
       const verifyRes = await verifyLogin({ email, credential });
       if (!verifyRes.res.ok || !verifyRes.json.verified) {
@@ -146,7 +174,10 @@ export function useAuthPanel() {
   }
 
   async function handlePasswordFallback() {
-    if (!canSubmit) return;
+    if (Object.keys(loginErrors).length > 0) {
+      setAttempted((prev) => ({ ...prev, login: true }));
+      return;
+    }
     setStatus({ kind: "busy", message: "Starting password login..." });
 
     try {
@@ -166,8 +197,7 @@ export function useAuthPanel() {
 
   return {
     accountNumber,
-    canSubmit,
-    canSubmitSignup,
+    currentErrors,
     email,
     handleLogin,
     handlePasswordFallback,
@@ -185,6 +215,8 @@ export function useAuthPanel() {
     setPassword,
     setPhoneNumber,
     status,
+    showValidation,
+    validationSummary,
     webauthnSupported,
   };
 }
