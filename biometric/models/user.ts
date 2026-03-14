@@ -22,11 +22,8 @@ export const UserZodSchema = z.object({
     .max(20, "Account number is too long"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z
-    .enum(["admin", "customer"], {
-      errorMap: () => ({ message: "Please select a valid role" }),
-    })
+    .enum(["admin", "customer"])
     .default("customer"),
-  currentChallenge: z.string().optional(),
   authenticators: z.array(AuthenticatorZodSchema),
 });
 
@@ -43,7 +40,6 @@ export const UserSchema = new mongoose.Schema(
     },
     nationalID: { type: Number, required: true, unique: true },
     accountNumber: { type: String, required: true, unique: true },
-    currentChallenge: { type: String },
     authenticators: [AuthenticatorSchema],
   },
 
