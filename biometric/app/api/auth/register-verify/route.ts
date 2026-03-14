@@ -2,10 +2,26 @@ import { NextResponse } from "next/server";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
+import { z } from "zod";
+
+// Define the Zod schema for the request body
+const RegisterVerifyRequestSchema = z.object({
+  email: z.string().email(),
+  body: z.any(), // The WebAuthn response body
+  fingerprintTemplate: z.string().optional(), // Base64 encoded fingerprint template
+  description: z.string().optional(),
+  isBiometric: z.boolean().optional().default(false),
+});
 
 export async function POST(req: Request) {
   try {
-    const { email, body } = await req.json();
+    const requestBody = await req.json();
+
+    // Validate the request body using the schema
+    const validatedBody = RegisterVerifyRequestSchema.parse(requestBody);
+
+    const { email, body, fingerprintTemplate, description, isBiometric } = validatedBody;
+
     await dbConnect();
 
     const user = await User.findOne({ email });
@@ -19,7 +35,7 @@ export async function POST(req: Request) {
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: user.currentChallenge,
-      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000",
+      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000", // In production, ensure this is set to your secure (HTTPS) origin
       expectedRPID: process.env.RP_ID || "localhost",
     });
 
@@ -27,13 +43,27 @@ export async function POST(req: Request) {
       const { credentialPublicKey, credentialID, counter } =
         verification.registrationInfo;
 
-      user.authenticators.push({
+      const newAuthenticator: any = { // Use 'any' temporarily for flexibility
         credentialID: Buffer.from(credentialID),
         credentialPublicKey: Buffer.from(credentialPublicKey),
         counter,
         credentialDeviceType: verification.registrationInfo.credentialType,
         credentialBackedUp: verification.registrationInfo.credentialBackedUp,
-      });
+      };
+
+      if (fingerprintTemplate) {
+        newAuthenticator.fingerprintTemplate = Buffer.from(fingerprintTemplate, 'base64');
+        newAuthenticator.isBiometric = true; // Automatically set to true if template is provided
+      }
+      if (description) {
+        newAuthenticator.description = description;
+      }
+      if (isBiometric !== undefined) {
+        newAuthenticator.isBiometric = isBiometric;
+      }
+
+
+      user.authenticators.push(newAuthenticator);
 
       user.currentChallenge = undefined; // Clear the used challenge
       await user.save();
@@ -43,6 +73,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ verified: false }, { status: 400 });
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+        return NextResponse.json({ error: error.errors }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

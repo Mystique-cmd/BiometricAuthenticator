@@ -13,9 +13,9 @@ export const UserZodSchema = z.object({
     .max(15, "Phone number is too long"),
   email: z.string().email("Invalid email address"),
   nationalID: z
-    .string()
-    .min(10000000, "National ID must be at least 8 digits")
-    .max(999999999999, "National ID is too long"),
+    .number()
+    .gte(10000000, "National ID must be at least 8 digits")
+    .lte(999999999999, "National ID is too long"),
   accountNumber: z
     .string()
     .min(10, "Account number must be at least 10 digits")
