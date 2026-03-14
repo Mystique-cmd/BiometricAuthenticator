@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
 import { z } from "zod";
@@ -25,9 +24,9 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const user = await User.findOne({ email });
-    if (!user || !user.currentChallenge) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Registration session expired" },
+        { error: "Unable to verify registration" },
         { status: 400 },
       );
     }
@@ -40,8 +39,7 @@ export async function POST(req: Request) {
     });
 
     if (verification.verified && verification.registrationInfo) {
-      const { credentialPublicKey, credentialID, counter } =
-        verification.registrationInfo;
+      const { credential } = verification.registrationInfo;
 
       const newAuthenticator: any = { // Use 'any' temporarily for flexibility
         credentialID: Buffer.from(credentialID),
@@ -65,7 +63,6 @@ export async function POST(req: Request) {
 
       user.authenticators.push(newAuthenticator);
 
-      user.currentChallenge = undefined; // Clear the used challenge
       await user.save();
 
       return NextResponse.json({ verified: true });

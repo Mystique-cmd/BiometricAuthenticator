@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
 import jwt from "jsonwebtoken";
@@ -32,9 +31,9 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const user = await User.findOne({ email });
-    if (!user || !user.currentChallenge) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Login session expired" },
+        { error: "Unable to verify login" },
         { status: 400 },
       );
     }
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
 
     if (!authenticator) {
       return NextResponse.json(
-        { error: "Authenticator not recognized" },
+        { error: "Unable to verify login" },
         { status: 400 },
       );
     }
@@ -96,7 +95,6 @@ export async function POST(req: Request) {
 
       // Security update: update the counter to prevent replay attacks
       authenticator.counter = verification.authenticationInfo.newCounter;
-      user.currentChallenge = undefined;
       await user.save();
 
       // SUCCESS: Generate JWT
