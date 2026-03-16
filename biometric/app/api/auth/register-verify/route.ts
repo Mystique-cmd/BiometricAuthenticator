@@ -1,25 +1,21 @@
 import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
-import { z } from "zod";
-
-// Define the Zod schema for the request body
-const RegisterVerifyRequestSchema = z.object({
-  email: z.string().email(),
-  body: z.any(), // The WebAuthn response body
-  fingerprintTemplate: z.string().optional(), // Base64 encoded fingerprint template
-  description: z.string().optional(),
-  isBiometric: z.boolean().optional().default(false),
-});
+import { consumeChallenge } from "@/lib/auth/challenges";
+import { verifyRegistration } from "@/lib/auth/webauthn";
+import { parseJson, registerVerifySchema } from "@/lib/auth/validators";
+import { hashPassword } from "@/lib/auth/password";
 
 export async function POST(req: Request) {
   try {
-    const requestBody = await req.json();
-
-    // Validate the request body using the schema
-    const validatedBody = RegisterVerifyRequestSchema.parse(requestBody);
-
-    const { email, body, fingerprintTemplate, description, isBiometric } = validatedBody;
+    const {
+      email,
+      password,
+      credential,
+      fingerprintTemplate,
+      description,
+      isBiometric,
+    } = await parseJson(req, registerVerifySchema);
 
     await dbConnect();
 
@@ -31,45 +27,65 @@ export async function POST(req: Request) {
       );
     }
 
-    const verification = await verifyRegistrationResponse({
-      response: body,
-      expectedChallenge: user.currentChallenge,
-      expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000", // In production, ensure this is set to your secure (HTTPS) origin
-      expectedRPID: process.env.RP_ID || "localhost",
-    });
+    const challenge = await consumeChallenge(email, "register");
+    if (!challenge) {
+      return NextResponse.json(
+        { error: "Unable to verify registration" },
+        { status: 400 },
+      );
+    }
+    if (challenge.expiresAt.getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "Registration challenge expired" },
+        { status: 400 },
+      );
+    }
+
+    const verification = await verifyRegistration(
+      credential,
+      challenge.challenge,
+      {
+        expectedOrigin: challenge.origin,
+        expectedRPID: challenge.rpId,
+      },
+    );
 
     if (verification.verified && verification.registrationInfo) {
-      const { credential } = verification.registrationInfo;
+      const registrationCredential = verification.registrationInfo.credential;
       const credentialIdBytes =
-        typeof credential.id === "string"
-          ? isoBase64URL.toBuffer(credential.id)
-          : credential.id;
-      const publicKeyBytes =
-        credential.publicKey instanceof Uint8Array
-          ? credential.publicKey
-          : new Uint8Array(credential.publicKey);
+        typeof registrationCredential.id === "string"
+          ? Buffer.from(registrationCredential.id, "base64url")
+          : Buffer.from(registrationCredential.id);
+      const publicKeyBytes = Buffer.from(registrationCredential.publicKey);
 
-      const newAuthenticator: any = { // Use 'any' temporarily for flexibility
-        credentialID: Buffer.from(credentialID),
-        credentialPublicKey: Buffer.from(credentialPublicKey),
-        counter,
-        credentialDeviceType: verification.registrationInfo.credentialType,
-        credentialBackedUp: verification.registrationInfo.credentialBackedUp,
+      const newAuthenticator = {
+        credentialID: credentialIdBytes,
+        credentialPublicKey: publicKeyBytes,
+        counter: registrationCredential.counter,
+        credentialDeviceType:
+          verification.registrationInfo.credentialDeviceType ?? "singleDevice",
+        credentialBackedUp:
+          verification.registrationInfo.credentialBackedUp ?? false,
       };
 
       if (fingerprintTemplate) {
-        newAuthenticator.fingerprintTemplate = Buffer.from(fingerprintTemplate, 'base64');
-        newAuthenticator.isBiometric = true; // Automatically set to true if template is provided
+        (newAuthenticator as { fingerprintTemplate?: Buffer }).fingerprintTemplate =
+          Buffer.from(fingerprintTemplate, "base64");
+        (newAuthenticator as { isBiometric?: boolean }).isBiometric = true;
       }
       if (description) {
-        newAuthenticator.description = description;
+        (newAuthenticator as { description?: string }).description = description;
       }
       if (isBiometric !== undefined) {
-        newAuthenticator.isBiometric = isBiometric;
+        (newAuthenticator as { isBiometric?: boolean }).isBiometric =
+          isBiometric;
       }
 
-
       user.authenticators.push(newAuthenticator);
+
+      if (password) {
+        user.password = await hashPassword(password);
+      }
 
       await user.save();
 
@@ -77,10 +93,14 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ verified: false }, { status: 400 });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-        return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const status =
+      error instanceof Error && error.message === "Invalid request"
+        ? 400
+        : 500;
+    return NextResponse.json(
+      { error: "Unable to verify registration" },
+      { status },
+    );
   }
 }

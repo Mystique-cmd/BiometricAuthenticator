@@ -29,8 +29,11 @@ export const registerOptionsSchema = z.object({
 
 export const registerVerifySchema = z.object({
   email: emailSchema,
-  password: passwordSchema,
+  password: passwordSchema.optional(),
   credential: credentialSchema,
+  fingerprintTemplate: z.string().optional(),
+  description: z.string().optional(),
+  isBiometric: z.boolean().optional(),
 });
 
 export const loginOptionsSchema = z.object({
@@ -40,6 +43,7 @@ export const loginOptionsSchema = z.object({
 export const loginVerifySchema = z.object({
   email: emailSchema,
   credential: credentialSchema,
+  fingerprintTemplate: z.string().optional(),
 });
 
 export const passwordLoginSchema = z.object({

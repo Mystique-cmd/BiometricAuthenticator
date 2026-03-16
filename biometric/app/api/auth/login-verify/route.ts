@@ -1,32 +1,18 @@
 import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
-
-import { NextResponse } from "next/server";
-import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { User } from "@/models/user";
-import dbConnect from "@/lib/db";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
-import { AuthenticatorType } from "@/models/authenticator"; // Import AuthenticatorType for type checking
-
-// Define the Zod schema for the request body
-const LoginVerifyRequestSchema = z.object({
-  email: z.string().email(),
-  body: z.any(), // The WebAuthn response body (credential from startAuthentication())
-  fingerprintTemplate: z.string().optional(), // Base64 encoded fingerprint template
-});
+import { AuthenticatorType } from "@/models/authenticator";
+import { consumeChallenge } from "@/lib/auth/challenges";
+import { verifyAuthentication } from "@/lib/auth/webauthn";
+import { issueJwt } from "@/lib/auth/jwt";
+import { parseJson, loginVerifySchema } from "@/lib/auth/validators";
 
 export async function POST(req: Request) {
   try {
-    const requestBody = await req.json();
-
-    // Validate the request body using the schema
-    const validatedBody = LoginVerifyRequestSchema.parse(requestBody);
-
-    const { email, body, fingerprintTemplate } = validatedBody;
+    const { email, credential, fingerprintTemplate } = await parseJson(
+      req,
+      loginVerifySchema,
+    );
 
     await dbConnect();
 
@@ -39,7 +25,8 @@ export async function POST(req: Request) {
     }
 
     const authenticator = user.authenticators.find(
-      (auth: AuthenticatorType) => auth.credentialID.toString("base64url") === body.id,
+      (auth: AuthenticatorType) =>
+        auth.credentialID.toString("base64url") === credential.id,
     );
 
     if (!authenticator) {
@@ -49,36 +36,58 @@ export async function POST(req: Request) {
       );
     }
 
+    const challenge = await consumeChallenge(email, "login");
+    if (!challenge) {
+      return NextResponse.json(
+        { error: "Unable to verify login" },
+        { status: 400 },
+      );
+    }
+    if (challenge.expiresAt.getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "Login challenge expired" },
+        { status: 400 },
+      );
+    }
+
     let verification;
     try {
-      verification = await verifyAuthenticationResponse({
-        response: body,
-        expectedChallenge: user.currentChallenge,
-        expectedOrigin: process.env.EXPECTED_ORIGIN || "http://localhost:3000", // In production, ensure this is set to your secure (HTTPS) origin
-        expectedRPID: process.env.RP_ID || "localhost",
-        authenticator: {
+      verification = await verifyAuthentication(
+        credential,
+        challenge.challenge,
+        {
           credentialID: authenticator.credentialID,
           credentialPublicKey: authenticator.credentialPublicKey,
           counter: authenticator.counter,
         },
-      });
-    } catch (error: any) {
+        {
+          expectedOrigin: challenge.origin,
+          expectedRPID: challenge.rpId,
+        },
+      );
+    } catch (error: unknown) {
       console.error("WebAuthn verification failed:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
-
 
     if (verification.verified) {
       // If a fingerprint template was provided, perform matching
       if (fingerprintTemplate) {
         if (!authenticator.isBiometric || !authenticator.fingerprintTemplate) {
           return NextResponse.json(
-            { error: "Provided authenticator is not configured for fingerprint matching" },
+            {
+              error:
+                "Provided authenticator is not configured for fingerprint matching",
+            },
             { status: 400 },
           );
         }
 
-        const submittedFingerprintBuffer = Buffer.from(fingerprintTemplate, 'base64');
+        const submittedFingerprintBuffer = Buffer.from(
+          fingerprintTemplate,
+          "base64",
+        );
         const storedFingerprintBuffer = authenticator.fingerprintTemplate;
 
         // Placeholder for actual biometric matching logic
@@ -97,19 +106,30 @@ export async function POST(req: Request) {
       authenticator.counter = verification.authenticationInfo.newCounter;
       await user.save();
 
-      // SUCCESS: Generate JWT
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-        expiresIn: "1h",
+      const token = issueJwt({
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        authMethod: "webauthn",
       });
 
-      return NextResponse.json({ verified: true, token });
+      const response = NextResponse.json({ verified: true, token });
+      response.cookies.set("session", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+      });
+
+      return response;
     }
 
     return NextResponse.json({ verified: false }, { status: 400 });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-        return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const status =
+      error instanceof Error && error.message === "Invalid request"
+        ? 400
+        : 500;
+    return NextResponse.json({ error: "Unable to verify login" }, { status });
   }
 }

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    let matchQuery: any = {};
+    const matchQuery: Record<string, unknown> = {};
     if (userId) {
       matchQuery._id = userId;
     }
@@ -71,8 +71,9 @@ export async function GET(req: Request) {
       totalPages: Math.ceil(totalAuthenticators / limit),
       totalAuthenticators,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching authenticators:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -20,9 +20,10 @@ export async function POST(req: Request) {
     await newAlert.save();
 
     return NextResponse.json(newAlert, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating alert:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     const type = url.searchParams.get("type");
     const severity = url.searchParams.get("severity");
     const resolved = url.searchParams.get("resolved");
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
       query.userId = userId;
     }
 
-    const sort: any = {};
+    const sort: Record<string, 1 | -1> = {};
     const sortBy = url.searchParams.get("sortBy") || "timestamp";
     const sortOrder = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
     sort[sortBy] = sortOrder;
@@ -74,8 +75,9 @@ export async function GET(req: Request) {
       totalPages: Math.ceil(totalAlerts / limit),
       totalAlerts,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching alerts:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

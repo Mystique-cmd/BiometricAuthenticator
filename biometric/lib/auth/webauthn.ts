@@ -81,13 +81,16 @@ export function buildAuthenticationOptions(user: {
 export async function verifyRegistration(
   credential: unknown,
   expectedChallenge: string,
+  options?: { expectedOrigin?: string; expectedRPID?: string },
 ) {
-  const { expectedOrigin, rpId } = getRpConfig();
+  const config = getRpConfig();
+  const expectedOrigin = options?.expectedOrigin ?? config.expectedOrigin;
+  const expectedRPID = options?.expectedRPID ?? config.rpId;
   return verifyRegistrationResponse({
     response: credential as Parameters<typeof verifyRegistrationResponse>[0]["response"],
     expectedChallenge,
     expectedOrigin,
-    expectedRPID: rpId,
+    expectedRPID,
   });
 }
 
@@ -95,13 +98,16 @@ export async function verifyAuthentication(
   credential: unknown,
   expectedChallenge: string,
   authenticator: WebAuthnCredential,
+  options?: { expectedOrigin?: string; expectedRPID?: string },
 ) {
-  const { expectedOrigin, rpId } = getRpConfig();
+  const config = getRpConfig();
+  const expectedOrigin = options?.expectedOrigin ?? config.expectedOrigin;
+  const expectedRPID = options?.expectedRPID ?? config.rpId;
   return verifyAuthenticationResponse({
     response: credential as Parameters<typeof verifyAuthenticationResponse>[0]["response"],
     expectedChallenge,
     expectedOrigin,
-    expectedRPID: rpId,
+    expectedRPID,
     credential: authenticator,
   });
 }

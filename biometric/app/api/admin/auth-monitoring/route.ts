@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const query: any = {
+    const query: Record<string, unknown> = {
       action: {
         $in: [
           "User Login",
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const sort: any = {};
+    const sort: Record<string, 1 | -1> = {};
     const sortBy = url.searchParams.get("sortBy") || "timestamp";
     const sortOrder = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
     sort[sortBy] = sortOrder;
@@ -70,8 +70,9 @@ export async function GET(req: Request) {
       totalPages: Math.ceil(totalAuthLogs / limit),
       totalAuthLogs,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching authentication logs:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
