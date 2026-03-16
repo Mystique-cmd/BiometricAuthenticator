@@ -28,9 +28,10 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const authenticatorIndex = user.authenticators.findIndex(
-      (auth: any) => auth._id.toString() === authenticatorId,
-    );
+    const authenticatorIndex = user.authenticators.findIndex((auth) => {
+      const authId = (auth as { _id?: { toString(): string } })._id?.toString();
+      return authId === authenticatorId;
+    });
 
     if (authenticatorIndex === -1) {
       return NextResponse.json(
@@ -45,8 +46,9 @@ export async function DELETE(
     return NextResponse.json({
       message: "Authenticator deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting authenticator:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -18,9 +18,10 @@ export async function GET(
     }
 
     return NextResponse.json(alert);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching alert:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -43,18 +44,23 @@ export async function PATCH(
       );
     }
 
-    const updatedAlert = await Alert.findByIdAndUpdate(id, validationResult.data, {
-      new: true,
-    }).populate("userId", "name email");
+    const updatedAlert = await Alert.findByIdAndUpdate(
+      id,
+      validationResult.data,
+      {
+        new: true,
+      },
+    ).populate("userId", "name email");
 
     if (!updatedAlert) {
       return NextResponse.json({ error: "Alert not found" }, { status: 404 });
     }
 
     return NextResponse.json(updatedAlert);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating alert:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -74,8 +80,9 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "Alert deleted successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting alert:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

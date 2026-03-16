@@ -2,36 +2,45 @@ import { NextResponse } from "next/server";
 import { User, UserZodSchema } from "@/models/user";
 import dbConnect from "@/lib/db";
 import bcrypt from "bcrypt";
-import mongoose from "mongoose";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
 export async function GET(
-  req: Request,
+  req: AuthorizedRequest,
   { params }: { params: { id: string } },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
     const { id } = params;
 
-    const user = await User.findById(id).select(
-      "-password -currentChallenge -authenticators",
-    );
+    const user = await User.findById(id).select("-password -authenticators");
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json(user);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching user:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function PUT(
-  req: Request,
+  req: AuthorizedRequest,
   { params }: { params: { id: string } },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
@@ -47,7 +56,7 @@ export async function PUT(
       );
     }
 
-    let updateData = validationResult.data;
+    const updateData = validationResult.data;
 
     // Hash password if it's being updated
     if (updateData.password) {
@@ -56,23 +65,29 @@ export async function PUT(
 
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
       new: true,
-    }).select("-password -currentChallenge -authenticators");
+    }).select("-password -authenticators");
 
     if (!updatedUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json(updatedUser);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating user:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  req: Request,
+  req: AuthorizedRequest,
   { params }: { params: { id: string } },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
@@ -85,16 +100,22 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "User deleted successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function PATCH(
-  req: Request,
+  req: AuthorizedRequest,
   { params }: { params: { id: string } },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
@@ -114,15 +135,16 @@ export async function PATCH(
       id,
       { role: roleValidation.data },
       { new: true },
-    ).select("-password -currentChallenge -authenticators");
+    ).select("-password -authenticators");
 
     if (!updatedUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json(updatedUser);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating user role:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

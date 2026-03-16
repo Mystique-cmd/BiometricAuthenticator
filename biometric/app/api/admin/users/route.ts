@@ -18,7 +18,7 @@ export async function GET(req: AuthorizedRequest) { // Change req type to Author
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     const role = url.searchParams.get("role");
     const email = url.searchParams.get("email");
     const name = url.searchParams.get("name");
@@ -33,7 +33,7 @@ export async function GET(req: AuthorizedRequest) { // Change req type to Author
       query.name = { $regex: name, $options: "i" }; // Case-insensitive partial match
     }
 
-    const sort: any = {};
+    const sort: Record<string, 1 | -1> = {};
     const sortBy = url.searchParams.get("sortBy") || "createdAt";
     const sortOrder = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
     sort[sortBy] = sortOrder;
@@ -42,7 +42,7 @@ export async function GET(req: AuthorizedRequest) { // Change req type to Author
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .select("-password -currentChallenge -authenticators"); // Exclude sensitive fields
+      .select("-password -authenticators"); // Exclude sensitive fields
 
     const totalUsers = await User.countDocuments(query);
 
@@ -53,8 +53,9 @@ export async function GET(req: AuthorizedRequest) { // Change req type to Author
       totalPages: Math.ceil(totalUsers / limit),
       totalUsers,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching users:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
