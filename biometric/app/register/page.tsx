@@ -49,7 +49,7 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/");
+      router.push("/login");
     } catch (err) {
       console.error(err);
       setError("Something went wrong. Please try again.");
@@ -182,7 +182,7 @@ export default function RegisterPage() {
               </button>
               <a
                 className="text-sm text-zinc-600 hover:text-zinc-900"
-                href="/"
+                href="/login"
               >
                 Back to login
               </a>
