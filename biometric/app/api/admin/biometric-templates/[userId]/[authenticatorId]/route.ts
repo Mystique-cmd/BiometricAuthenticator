@@ -2,15 +2,21 @@ import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
 import mongoose from "mongoose";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { userId: string; authenticatorId: string } },
+  req: AuthorizedRequest,
+  context: { params: Promise<{ userId: string; authenticatorId: string }> },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
-    const { userId, authenticatorId } = params;
+    const { userId, authenticatorId } = await context.params;
 
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
@@ -28,10 +34,12 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const authenticatorIndex = user.authenticators.findIndex((auth) => {
-      const authId = (auth as { _id?: { toString(): string } })._id?.toString();
+    const authenticatorIndex = user.authenticators.findIndex(
+      (auth: { _id?: { toString(): string } }) => {
+        const authId = auth._id?.toString();
       return authId === authenticatorId;
-    });
+      },
+    );
 
     if (authenticatorIndex === -1) {
       return NextResponse.json(

@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { User } from "@/models/user";
 import dbConnect from "@/lib/db";
 import { AuthenticatorType } from "@/models/authenticator";
+import type { WebAuthnCredential } from "@simplewebauthn/server";
 import { consumeChallenge } from "@/lib/auth/challenges";
 import { verifyAuthentication } from "@/lib/auth/webauthn";
 import { issueJwt } from "@/lib/auth/jwt";
 import { parseJson, loginVerifySchema } from "@/lib/auth/validators";
+import { AuditLog } from "@/models/auditLog";
 
 export async function POST(req: Request) {
   try {
@@ -50,16 +52,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const credentialForVerification: WebAuthnCredential = {
+      id: authenticator.credentialID.toString("base64url"),
+      publicKey: Uint8Array.from(authenticator.credentialPublicKey),
+      counter: authenticator.counter,
+    };
+
     let verification;
     try {
       verification = await verifyAuthentication(
         credential,
         challenge.challenge,
-        {
-          credentialID: authenticator.credentialID,
-          credentialPublicKey: authenticator.credentialPublicKey,
-          counter: authenticator.counter,
-        },
+        credentialForVerification,
         {
           expectedOrigin: challenge.origin,
           expectedRPID: challenge.rpId,
@@ -112,6 +116,17 @@ export async function POST(req: Request) {
         role: user.role,
         authMethod: "webauthn",
       });
+
+      try {
+        await AuditLog.create({
+          userId: user._id,
+          action: "User Login",
+          status: "Success",
+          details: { method: "webauthn" },
+        });
+      } catch (error: unknown) {
+        console.error("Audit log failure:", error);
+      }
 
       const response = NextResponse.json({ verified: true, token });
       response.cookies.set("session", token, {

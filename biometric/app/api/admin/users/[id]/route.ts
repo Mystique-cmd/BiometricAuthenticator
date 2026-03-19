@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { User, UserZodSchema } from "@/models/user";
 import dbConnect from "@/lib/db";
-import bcrypt from "bcrypt";
+import { hashPassword } from "@/lib/auth/password";
 import { authorize, AuthorizedRequest } from "@/lib/auth";
 
 export async function GET(
   req: AuthorizedRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   const authResult = await authorize(req, "admin");
   if (authResult) {
@@ -16,7 +16,7 @@ export async function GET(
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
 
     const user = await User.findById(id).select("-password -authenticators");
 
@@ -34,7 +34,7 @@ export async function GET(
 
 export async function PUT(
   req: AuthorizedRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   const authResult = await authorize(req, "admin");
   if (authResult) {
@@ -44,7 +44,7 @@ export async function PUT(
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
     const body = await req.json();
 
     // Validate request body for partial update
@@ -60,7 +60,7 @@ export async function PUT(
 
     // Hash password if it's being updated
     if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
+      updateData.password = await hashPassword(updateData.password);
     }
 
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
@@ -81,7 +81,7 @@ export async function PUT(
 
 export async function DELETE(
   req: AuthorizedRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   const authResult = await authorize(req, "admin");
   if (authResult) {
@@ -91,7 +91,7 @@ export async function DELETE(
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
 
     const deletedUser = await User.findByIdAndDelete(id);
 
@@ -109,7 +109,7 @@ export async function DELETE(
 
 export async function PATCH(
   req: AuthorizedRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   const authResult = await authorize(req, "admin");
   if (authResult) {
@@ -119,7 +119,7 @@ export async function PATCH(
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
     const { role } = await req.json();
 
     // Validate role

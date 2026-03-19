@@ -3,8 +3,14 @@ import { User } from "@/models/user";
 import { Alert } from "@/models/alert";
 import { AuditLog } from "@/models/auditLog";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: AuthorizedRequest) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
@@ -29,7 +35,7 @@ export async function GET() {
     // Recent Login Attempts (from AuditLog) - last 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentLoginAttempts = await AuditLog.countDocuments({
-      action: "User Login", // Assuming this action string for login
+      action: "User Login",
       timestamp: { $gte: twentyFourHoursAgo },
     });
 

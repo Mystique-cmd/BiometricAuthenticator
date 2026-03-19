@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { AuditLog } from "@/models/auditLog";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
-export async function GET(req: Request) {
+export async function GET(req: AuthorizedRequest) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
