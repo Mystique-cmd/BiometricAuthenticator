@@ -36,6 +36,9 @@ export async function verifyRegister(payload: {
   email: string;
   password: string;
   credential: unknown;
+  fingerprintTemplate?: string;
+  description?: string;
+  isBiometric?: boolean;
 }) {
   const res = await fetch("/api/auth/register-verify", {
     method: "POST",
@@ -56,7 +59,11 @@ export async function getLoginOptions(email: string) {
   return { res, json };
 }
 
-export async function verifyLogin(payload: { email: string; credential: unknown }) {
+export async function verifyLogin(payload: {
+  email: string;
+  credential: unknown;
+  fingerprintTemplate?: string;
+}) {
   const res = await fetch("/api/auth/login-verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

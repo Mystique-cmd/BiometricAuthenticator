@@ -6,7 +6,7 @@ import StatusBanner from "./StatusBanner";
 import ValidationSummary from "./ValidationSummary";
 import { useAuthPanel } from "@/hooks/useAuthPanel";
 
-export default function AuthPanel() {
+export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "signup" | "login" }) {
   const {
     accountNumber,
     currentErrors,
@@ -29,7 +29,7 @@ export default function AuthPanel() {
     showValidation,
     validationSummary,
     webauthnSupported,
-  } = useAuthPanel();
+  } = useAuthPanel(initialMode);
 
   return (
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">

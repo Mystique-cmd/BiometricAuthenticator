@@ -29,14 +29,14 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Request failed.";
 }
 
-export function useAuthPanel() {
+export function useAuthPanel(initialMode: Mode = "signup") {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [nationalID, setNationalID] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [mode, setMode] = useState<Mode>("signup");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [attempted, setAttempted] = useState<{ signup: boolean; login: boolean }>(
     { signup: false, login: false },
   );
