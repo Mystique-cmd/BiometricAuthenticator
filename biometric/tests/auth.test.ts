@@ -62,7 +62,7 @@ async function createUser(overrides: UserOverrides = {}) {
     email: "user@example.com",
     nationalID: 12345678,
     accountNumber: "1234567890",
-    password: "",
+    password: "secret123",
     role: "customer",
     authenticators: [],
     ...overrides,
