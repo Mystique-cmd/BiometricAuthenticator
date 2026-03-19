@@ -10,25 +10,39 @@ export default function HomePage() {
           <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300/90">
-                Equity Biometric System
+                Biometric Authentication
               </p>
               <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Reliable identity assurance with biometric intelligence.
+                High-assurance identity checks for every session.
               </h1>
               <p className="text-base text-zinc-300">
-                Authenticate customers and administrators using secure biometric
-                enrollment, live verification, and role-aware access. Our
-                platform pairs cryptographic checks with adaptive risk scoring
-                so every session is trusted from the first scan.
+                Authenticate customers and administrators with WebAuthn-backed
+                biometrics, encrypted templates, and role-aware access. Each
+                session is cryptographically verified before privileges are
+                granted.
               </p>
+              <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-zinc-400">
+                {[
+                  "FIDO2/WebAuthn",
+                  "AES-256 at rest",
+                  "JWT session integrity",
+                ].map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur">
               <p className="text-sm font-semibold text-white">
-                Get started in minutes
+                Get started securely
               </p>
               <p className="text-sm text-zinc-300">
-                New here? Register your biometric identity first, then sign in
-                to access dashboards.
+                Enroll a device-bound credential, then access dashboards with
+                biometric-first verification.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Link
@@ -80,10 +94,10 @@ export default function HomePage() {
                 Built for regulated environments
               </h2>
               <p className="mt-3 text-sm text-zinc-300">
-                The biometric system encrypts templates at rest, verifies liveness
-                before issuing sessions, and flags anomalies automatically.
-                Administrators can monitor trends, approve escalations, and export
-                audit logs at any time.
+                The biometric system encrypts templates at rest, verifies
+                credential liveness before issuing sessions, and flags anomalies
+                automatically. Administrators can monitor trends, approve
+                escalations, and export audit logs at any time.
               </p>
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 {[
@@ -91,7 +105,10 @@ export default function HomePage() {
                   { label: "350ms", helper: "Average response time" },
                   { label: "24/7", helper: "Continuous monitoring" },
                 ].map((stat) => (
-                  <div key={stat.label} className="rounded-2xl bg-zinc-900/70 p-4">
+                  <div
+                    key={stat.label}
+                    className="rounded-2xl bg-zinc-900/70 p-4"
+                  >
                     <p className="text-xl font-semibold text-white">
                       {stat.label}
                     </p>

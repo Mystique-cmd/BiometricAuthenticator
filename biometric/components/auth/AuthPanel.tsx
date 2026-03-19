@@ -6,7 +6,13 @@ import StatusBanner from "./StatusBanner";
 import ValidationSummary from "./ValidationSummary";
 import { useAuthPanel } from "@/hooks/useAuthPanel";
 
-export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "signup" | "login" }) {
+export default function AuthPanel({
+  initialMode = "signup",
+  className,
+}: {
+  initialMode?: "signup" | "login";
+  className?: string;
+}) {
   const {
     accountNumber,
     currentErrors,
@@ -32,13 +38,19 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
   } = useAuthPanel(initialMode);
 
   return (
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <div
+      className={`w-full max-w-md space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 text-zinc-100 shadow-[0_25px_60px_-45px_rgba(0,0,0,0.7)] ${className ?? ""}`}
+    >
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300/80">
+          Identity Assurance
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold text-white">
           Biometric Authenticator
         </h1>
-        <p className="text-sm text-zinc-600">
-          Register with password + fingerprint, then login with fingerprint.
+        <p className="mt-2 text-sm text-zinc-300">
+          Device-bound credentials, encrypted templates, and secure session
+          issuance.
         </p>
       </div>
 
@@ -49,14 +61,16 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
       />
 
       {mode === "signup" && (
-        <>
-          <Field
-            label="Full Name"
-            value={name}
-            onChange={setName}
-            placeholder="Jane Doe"
-            error={showValidation ? currentErrors.name : undefined}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field
+              label="Full Name"
+              value={name}
+              onChange={setName}
+              placeholder="Jane Doe"
+              error={showValidation ? currentErrors.name : undefined}
+            />
+          </div>
           <Field
             label="Phone Number"
             type="tel"
@@ -73,14 +87,16 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
             placeholder="12345678"
             error={showValidation ? currentErrors.nationalID : undefined}
           />
-          <Field
-            label="Account Number"
-            value={accountNumber}
-            onChange={setAccountNumber}
-            placeholder="1234567890"
-            error={showValidation ? currentErrors.accountNumber : undefined}
-          />
-        </>
+          <div className="sm:col-span-2">
+            <Field
+              label="Account Number"
+              value={accountNumber}
+              onChange={setAccountNumber}
+              placeholder="1234567890"
+              error={showValidation ? currentErrors.accountNumber : undefined}
+            />
+          </div>
+        </div>
       )}
 
       <Field
@@ -103,7 +119,7 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
       <div className="flex gap-3">
         {mode === "signup" ? (
           <button
-            className="flex-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="flex-1 rounded-md bg-cyan-400 px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-50"
             onClick={handleRegister}
             disabled={status.kind === "busy"}
           >
@@ -111,7 +127,7 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
           </button>
         ) : (
           <button
-            className="flex-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="flex-1 rounded-md bg-cyan-400 px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-50"
             onClick={handleLogin}
             disabled={status.kind === "busy"}
           >
@@ -123,13 +139,13 @@ export default function AuthPanel({ initialMode = "signup" }: { initialMode?: "s
       <ValidationSummary messages={validationSummary} />
 
       {webauthnSupported === false && mode === "login" && (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-400">
           Fingerprint not supported on this device. Password fallback enabled.
         </p>
       )}
 
       {webauthnSupported === false && mode === "signup" && (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-400">
           Fingerprint is required to complete signup.
         </p>
       )}

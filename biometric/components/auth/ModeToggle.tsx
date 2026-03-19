@@ -8,12 +8,12 @@ type ModeToggleProps = {
 
 export default function ModeToggle({ mode, onChange, disabled }: ModeToggleProps) {
   return (
-    <div className="flex rounded-lg border border-zinc-200 p-1">
+    <div className="flex rounded-lg border border-zinc-800 bg-zinc-950 p-1">
       <button
         className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${
           mode === "signup"
-            ? "bg-zinc-900 text-white"
-            : "text-zinc-700 hover:bg-zinc-50"
+            ? "bg-cyan-400 text-zinc-900"
+            : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-200"
         }`}
         onClick={() => onChange("signup")}
         disabled={disabled}
@@ -23,8 +23,8 @@ export default function ModeToggle({ mode, onChange, disabled }: ModeToggleProps
       <button
         className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${
           mode === "login"
-            ? "bg-zinc-900 text-white"
-            : "text-zinc-700 hover:bg-zinc-50"
+            ? "bg-cyan-400 text-zinc-900"
+            : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-200"
         }`}
         onClick={() => onChange("login")}
         disabled={disabled}
