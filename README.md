@@ -28,11 +28,15 @@ JWT_SECRET=your_jwt_secret_key
 RP_ID=localhost
 RP_NAME=My App
 EXPECTED_ORIGIN=http://localhost:3000
-JWT_SECRET=your_jwt_secret
 JWT_TTL=1h
+ 
+ # AES Encryption Key for sensitive data (e.g., fingerprint templates)
+ # This should be a strong, random 32-byte key (64 hexadecimal characters) for AES-256.
+ # Example: ENCRYPTION_KEY="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+ ENCRYPTION_KEY=your_aes_encryption_key
 ```
 
-# Get Started.
+# Get Started
 
 # Auth Flow (Sequence Diagram)
 
@@ -73,14 +77,6 @@ sequenceDiagram
   Client->>API: POST /auth/login-password {email, password, webauthnUnsupported:true}
   API->>DB: find user
   API-->>Client: set-cookie session=JWT
-```
-
-EXPECTED_ORIGIN=http://localhost:3000
-
- AES Encryption Key for sensitive data (e.g., fingerprint templates)
- This should be a strong, random 32-byte key (64 hexadecimal characters) for AES-256.
- Example: ENCRYPTION_KEY="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
-ENCRYPTION_KEY=your_aes_encryption_key
 ```
 
 ## Get Started
