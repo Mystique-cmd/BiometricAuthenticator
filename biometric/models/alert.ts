@@ -9,7 +9,7 @@ export const AlertZodSchema = z.object({
   timestamp: z.date().default(() => new Date()),
   resolved: z.boolean().default(false),
   resolvedBy: z.string().optional(), // User ID
-  details: z.record(z.any()).optional(), // Flexible object for additional context
+  details: z.record(z.string(), z.any()).optional(), // Flexible object for additional context
   userId: z.string().optional(), // User ID associated with the alert
 });
 
