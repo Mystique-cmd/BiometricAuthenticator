@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { Alert, AlertZodSchema } from "@/models/alert";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
-export async function POST(req: Request) {
+export async function POST(req: AuthorizedRequest) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
     const body = await req.json();
@@ -27,7 +33,12 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: AuthorizedRequest) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 

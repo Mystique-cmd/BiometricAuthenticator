@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { AuditLog } from "@/models/auditLog";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
-export async function GET(req: Request) {
+export async function GET(req: AuthorizedRequest) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
@@ -41,13 +47,14 @@ export async function GET(req: Request) {
       query.action = action; // Exact match for specific action
     }
     if (fromDate || toDate) {
-      query.timestamp = {};
+      const timestampQuery: { $gte?: Date; $lte?: Date } = {};
       if (fromDate) {
-        query.timestamp.$gte = new Date(fromDate);
+        timestampQuery.$gte = new Date(fromDate);
       }
       if (toDate) {
-        query.timestamp.$lte = new Date(toDate);
+        timestampQuery.$lte = new Date(toDate);
       }
+      query.timestamp = timestampQuery;
     }
 
     const sort: Record<string, 1 | -1> = {};

@@ -5,6 +5,7 @@ import { consumeChallenge } from "@/lib/auth/challenges";
 import { verifyRegistration } from "@/lib/auth/webauthn";
 import { parseJson, registerVerifySchema } from "@/lib/auth/validators";
 import { hashPassword } from "@/lib/auth/password";
+import { AuditLog } from "@/models/auditLog";
 
 export async function POST(req: Request) {
   try {
@@ -88,6 +89,17 @@ export async function POST(req: Request) {
       }
 
       await user.save();
+
+      try {
+        await AuditLog.create({
+          userId: user._id,
+          action: "Authenticator Added",
+          status: "Success",
+          details: { method: "webauthn", isBiometric: !!fingerprintTemplate },
+        });
+      } catch (error: unknown) {
+        console.error("Audit log failure:", error);
+      }
 
       return NextResponse.json({ verified: true });
     }

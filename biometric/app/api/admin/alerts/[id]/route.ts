@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { Alert, AlertZodSchema } from "@/models/alert";
 import dbConnect from "@/lib/db";
+import { authorize, AuthorizedRequest } from "@/lib/auth";
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } },
+  req: AuthorizedRequest,
+  context: { params: Promise<{ id: string }> },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
 
     const alert = await Alert.findById(id).populate("userId", "name email"); // Optionally populate user details
 
@@ -26,13 +32,18 @@ export async function GET(
 }
 
 export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } },
+  req: AuthorizedRequest,
+  context: { params: Promise<{ id: string }> },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
     const body = await req.json();
 
     // Validate request body for partial update
@@ -65,13 +76,18 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } },
+  req: AuthorizedRequest,
+  context: { params: Promise<{ id: string }> },
 ) {
+  const authResult = await authorize(req, "admin");
+  if (authResult) {
+    return authResult;
+  }
+
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await context.params;
 
     const deletedAlert = await Alert.findByIdAndDelete(id);
 

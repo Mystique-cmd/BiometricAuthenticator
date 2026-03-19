@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 
-function getBaseUrl() {
-  const headerStore = headers();
+async function getBaseUrl() {
+  const headerStore = await headers();
   const host =
     headerStore.get("x-forwarded-host") ?? headerStore.get("host");
   const proto =
@@ -18,7 +18,7 @@ function getBaseUrl() {
 export async function adminFetch(path: string) {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
-  const baseUrl = getBaseUrl();
+  const baseUrl = await getBaseUrl();
 
   return fetch(`${baseUrl}${path}`, {
     method: "GET",

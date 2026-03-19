@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import { parseJson, passwordLoginSchema } from "@/lib/auth/validators";
 import { issueJwt } from "@/lib/auth/jwt";
 import { verifyPassword } from "@/lib/auth/password";
+import { AuditLog } from "@/models/auditLog";
 
 export async function POST(req: Request) {
   try {
@@ -58,6 +59,17 @@ export async function POST(req: Request) {
       sameSite: "lax",
       path: "/",
     });
+
+    try {
+      await AuditLog.create({
+        userId: user._id,
+        action: "User Login",
+        status: "Success",
+        details: { method: "password" },
+      });
+    } catch (error: unknown) {
+      console.error("Audit log failure:", error);
+    }
 
     return response;
   } catch {
