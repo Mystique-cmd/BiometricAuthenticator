@@ -6,7 +6,7 @@ export const AuditLogZodSchema = z.object({
   timestamp: z.date().default(() => new Date()),
   userId: z.string().optional(), // ID of the user who performed the action
   action: z.string().min(1, "Action description cannot be empty"),
-  details: z.record(z.any()).optional(), // Flexible object for additional context
+  details: z.record(z.string(), z.any()).optional(), // Flexible object for additional context
   ipAddress: z.string().optional(),
   status: z.enum(["Success", "Failure", "Info"]).default("Info"),
   targetId: z.string().optional(), // ID of the resource affected
