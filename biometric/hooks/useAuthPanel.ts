@@ -86,15 +86,8 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       setAttempted((prev) => ({ ...prev, signup: true }));
       return;
     }
-    if (webauthnSupported === false) {
-      setStatus({
-        kind: "error",
-        message: "Fingerprint is required to complete signup.",
-      });
-      return;
-    }
 
-    setStatus({ kind: "busy", message: "Starting registration..." });
+    setStatus({ kind: "busy", message: "Creating user account..." });
 
     try {
       const createRes = await registerUser({
@@ -105,31 +98,50 @@ export function useAuthPanel(initialMode: Mode = "signup") {
         accountNumber,
         password,
       });
+
       if (!createRes.res.ok) {
         throw new Error(
           (createRes.json.error as string) || "User creation failed",
         );
       }
 
-      const optionsRes = await getRegisterOptions(email);
-      if (!optionsRes.res.ok) {
-        throw new Error(
-          (optionsRes.json.error as string) || "Registration failed",
-        );
+      // Strict attempt for WebAuthn registration if supported by the browser
+      if (webauthnSupported) {
+        setStatus({
+          kind: "busy",
+          message: "Account created. Attempting biometric registration...",
+        });
+        try {
+          const optionsRes = await getRegisterOptions(email);
+          if (!optionsRes.res.ok) {
+            throw new Error(
+              (optionsRes.json.error as string) ||
+                "Failed to get biometric registration options.",
+            );
+          }
+
+          const options =
+            optionsRes.json.options as PublicKeyCredentialCreationOptionsJSON;
+          const credential = await startRegistration({ optionsJSON: options }); // This is where the browser prompt occurs
+
+          const verifyRes = await verifyRegister({ email, password, credential });
+          if (!verifyRes.res.ok || !verifyRes.json.verified) {
+            throw new Error(
+              (verifyRes.json.error as string) ||
+                "Biometric verification failed.",
+            );
+          }
+          setStatus({ kind: "success", message: "Registration successful, biometric authenticator added." });
+
+        } catch (biometricError: unknown) {
+          // If biometric registration fails (e.g., device incompatibility, user cancels, etc.)
+          console.warn("Biometric registration failed:", biometricError);
+          setStatus({ kind: "success", message: "Account created with password. Biometric setup could not be completed." });
+        }
+      } else {
+        // If WebAuthn is not supported by the browser at all
+        setStatus({ kind: "success", message: "Account created with password. Biometric authentication not supported by your browser/device." });
       }
-
-      const options =
-        optionsRes.json.options as PublicKeyCredentialCreationOptionsJSON;
-      const credential = await startRegistration({ optionsJSON: options });
-
-      const verifyRes = await verifyRegister({ email, password, credential });
-      if (!verifyRes.res.ok || !verifyRes.json.verified) {
-        throw new Error(
-          (verifyRes.json.error as string) || "Registration failed",
-        );
-      }
-
-      setStatus({ kind: "success", message: "Registration successful." });
     } catch (error: unknown) {
       setStatus({
         kind: "error",
@@ -144,30 +156,44 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       return;
     }
 
-    if (!webauthnSupported) {
-      await handlePasswordFallback();
-      return;
-    }
+    setStatus({ kind: "busy", message: "Attempting login..." });
 
-    setStatus({ kind: "busy", message: "Starting fingerprint login..." });
     try {
-      const optionsRes = await getLoginOptions(email);
-      if (!optionsRes.res.ok) {
-        throw new Error(
-          (optionsRes.json.error as string) || "Login failed",
-        );
+      // Always attempt WebAuthn login first if supported by the browser
+      if (webauthnSupported) {
+        setStatus({ kind: "busy", message: "Starting biometric login..." });
+        try {
+          const optionsRes = await getLoginOptions(email);
+          if (!optionsRes.res.ok) {
+            throw new Error(
+              (optionsRes.json.error as string) ||
+                "Failed to get biometric login options.",
+            );
+          }
+
+          const options =
+            optionsRes.json.options as PublicKeyCredentialRequestOptionsJSON;
+          const credential = await startAuthentication({ optionsJSON: options }); // This is where the browser prompt occurs
+
+          const verifyRes = await verifyLogin({ email, credential });
+          if (!verifyRes.res.ok || !verifyRes.json.verified) {
+            throw new Error((verifyRes.json.error as string) || "Biometric login failed");
+          }
+          setStatus({ kind: "success", message: "Login successful (biometric)." });
+          return; // Exit after successful biometric login
+
+        } catch (biometricError: unknown) {
+          // If biometric login fails (e.g., user cancels, no authenticator found, etc.)
+          console.warn("Biometric login failed, falling back to password:", biometricError);
+          await handlePasswordFallback(); // Explicitly fall back to password login
+          return;
+        }
       }
 
-      const options =
-        optionsRes.json.options as PublicKeyCredentialRequestOptionsJSON;
-      const credential = await startAuthentication({ optionsJSON: options });
+      // If WebAuthn is not supported by the browser, or if biometric login failed above,
+      // handlePasswordFallback will be called (either explicitly or implicitly).
+      await handlePasswordFallback();
 
-      const verifyRes = await verifyLogin({ email, credential });
-      if (!verifyRes.res.ok || !verifyRes.json.verified) {
-        throw new Error((verifyRes.json.error as string) || "Login failed");
-      }
-
-      setStatus({ kind: "success", message: "Login successful." });
     } catch (error: unknown) {
       setStatus({ kind: "error", message: getErrorMessage(error) });
     }
@@ -184,12 +210,12 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       const res = await passwordLogin({
         email,
         password,
-        webauthnUnsupported: true,
+        webauthnUnsupported: !webauthnSupported,
       });
       if (!res.res.ok || !res.json.verified) {
         throw new Error((res.json.error as string) || "Login failed");
       }
-      setStatus({ kind: "success", message: "Login successful." });
+      setStatus({ kind: "success", message: "Login successful (password)." });
     } catch (error: unknown) {
       setStatus({ kind: "error", message: getErrorMessage(error) });
     }

@@ -53,6 +53,7 @@ export function buildRegistrationOptions(user: {
       transports: normalizeTransports(auth.transports),
     })),
     authenticatorSelection: {
+      authenticatorAttachment: "platform",
       residentKey: "preferred",
       userVerification: "preferred",
     },
