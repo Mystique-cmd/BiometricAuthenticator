@@ -146,7 +146,8 @@ export default function AuthPanel({
 
       {webauthnSupported === false && mode === "signup" && (
         <p className="text-xs text-zinc-400">
-          Fingerprint is required to complete signup.
+          This device has no biometric authenticator available. Password-only
+          signup will be used instead.
         </p>
       )}
 

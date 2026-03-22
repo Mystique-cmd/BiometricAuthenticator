@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   browserSupportsWebAuthn,
+  platformAuthenticatorIsAvailable,
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
@@ -49,7 +50,30 @@ export function useAuthPanel(initialMode: Mode = "signup") {
   );
 
   useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
+    let cancelled = false;
+
+    async function detectWebAuthnSupport() {
+      if (!browserSupportsWebAuthn()) {
+        if (!cancelled) setWebauthnSupported(false);
+        return;
+      }
+
+      try {
+        const hasPlatformAuthenticator =
+          await platformAuthenticatorIsAvailable();
+        if (!cancelled) {
+          setWebauthnSupported(hasPlatformAuthenticator);
+        }
+      } catch {
+        if (!cancelled) setWebauthnSupported(false);
+      }
+    }
+
+    void detectWebAuthnSupport();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signupErrors = useMemo(() => {
@@ -86,8 +110,7 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       setAttempted((prev) => ({ ...prev, signup: true }));
       return;
     }
-
-    setStatus({ kind: "busy", message: "Creating user account..." });
+    setStatus({ kind: "busy", message: "Starting registration..." });
 
     try {
       const createRes = await registerUser({
@@ -105,42 +128,32 @@ export function useAuthPanel(initialMode: Mode = "signup") {
         );
       }
 
-      // Strict attempt for WebAuthn registration if supported by the browser
-      if (webauthnSupported) {
+      if (webauthnSupported === false) {
         setStatus({
-          kind: "busy",
-          message: "Account created. Attempting biometric registration...",
+          kind: "success",
+          message:
+            "Account created with password only. This device does not support biometric registration.",
         });
-        try {
-          const optionsRes = await getRegisterOptions(email);
-          if (!optionsRes.res.ok) {
-            throw new Error(
-              (optionsRes.json.error as string) ||
-                "Failed to get biometric registration options.",
-            );
-          }
+        setMode("login");
+        return;
+      }
 
-          const options =
-            optionsRes.json.options as PublicKeyCredentialCreationOptionsJSON;
-          const credential = await startRegistration({ optionsJSON: options }); // This is where the browser prompt occurs
+      const optionsRes = await getRegisterOptions(email);
+      if (!optionsRes.res.ok) {
+        throw new Error(
+          (optionsRes.json.error as string) || "Registration failed",
+        );
+      }
 
-          const verifyRes = await verifyRegister({ email, password, credential });
-          if (!verifyRes.res.ok || !verifyRes.json.verified) {
-            throw new Error(
-              (verifyRes.json.error as string) ||
-                "Biometric verification failed.",
-            );
-          }
-          setStatus({ kind: "success", message: "Registration successful, biometric authenticator added." });
+      const options =
+        optionsRes.json.options as PublicKeyCredentialCreationOptionsJSON;
+      const credential = await startRegistration({ optionsJSON: options });
 
-        } catch (biometricError: unknown) {
-          // If biometric registration fails (e.g., device incompatibility, user cancels, etc.)
-          console.warn("Biometric registration failed:", biometricError);
-          setStatus({ kind: "success", message: "Account created with password. Biometric setup could not be completed." });
-        }
-      } else {
-        // If WebAuthn is not supported by the browser at all
-        setStatus({ kind: "success", message: "Account created with password. Biometric authentication not supported by your browser/device." });
+      const verifyRes = await verifyRegister({ email, password, credential });
+      if (!verifyRes.res.ok || !verifyRes.json.verified) {
+        throw new Error(
+          (verifyRes.json.error as string) || "Registration failed",
+        );
       }
     } catch (error: unknown) {
       setStatus({
@@ -156,7 +169,10 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       return;
     }
 
-    setStatus({ kind: "busy", message: "Attempting login..." });
+    if (webauthnSupported !== true) {
+      await handlePasswordFallback();
+      return;
+    }
 
     try {
       // Always attempt WebAuthn login first if supported by the browser
