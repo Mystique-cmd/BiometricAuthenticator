@@ -72,7 +72,8 @@ export async function POST(req: Request) {
     }
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("Error in login-password API:", error);
     return NextResponse.json(
       { error: "Unable to verify login" },
       { status: 500 },
