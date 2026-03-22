@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation"; // Import useRouter
+
 import Field from "./Field";
 import ModeToggle from "./ModeToggle";
 import StatusBanner from "./StatusBanner";
@@ -13,6 +16,7 @@ export default function AuthPanel({
   initialMode?: "signup" | "login";
   className?: string;
 }) {
+  const router = useRouter(); // Initialize useRouter
   const {
     accountNumber,
     currentErrors,
@@ -36,6 +40,12 @@ export default function AuthPanel({
     validationSummary,
     webauthnSupported,
   } = useAuthPanel(initialMode);
+
+  useEffect(() => {
+    if (status.kind === "success" && mode === "login") {
+      router.push("/dashboard"); // Redirect to dashboard on successful login
+    }
+  }, [status.kind, mode, router]);
 
   return (
     <div
@@ -155,3 +165,4 @@ export default function AuthPanel({
     </div>
   );
 }
+
