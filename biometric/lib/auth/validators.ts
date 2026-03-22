@@ -7,11 +7,47 @@ const phoneSchema = z.string().min(10).max(15);
 const nationalIdSchema = z.number().int().min(10000000).max(999999999999);
 const accountNumberSchema = z.string().min(10).max(20);
 
-const credentialSchema = z.object({
-  id: z.string(),
-  response: z.record(z.string(), z.unknown()),
-  type: z.string(),
-});
+const registrationResponseSchema = z
+  .object({
+    clientDataJSON: z.string(),
+    attestationObject: z.string(),
+    authenticatorData: z.string().optional(),
+    transports: z.array(z.string()).optional(),
+    publicKeyAlgorithm: z.number().optional(),
+    publicKey: z.string().optional(),
+  })
+  .passthrough();
+
+const authenticationResponseSchema = z
+  .object({
+    clientDataJSON: z.string(),
+    authenticatorData: z.string(),
+    signature: z.string(),
+    userHandle: z.string().optional(),
+  })
+  .passthrough();
+
+const registrationCredentialSchema = z
+  .object({
+    id: z.string(),
+    rawId: z.string(),
+    response: registrationResponseSchema,
+    type: z.literal("public-key"),
+    clientExtensionResults: z.record(z.string(), z.unknown()),
+    authenticatorAttachment: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const authenticationCredentialSchema = z
+  .object({
+    id: z.string(),
+    rawId: z.string(),
+    response: authenticationResponseSchema,
+    type: z.literal("public-key"),
+    clientExtensionResults: z.record(z.string(), z.unknown()),
+    authenticatorAttachment: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 export const registerUserSchema = z.object({
   name: nameSchema,
@@ -30,7 +66,7 @@ export const registerOptionsSchema = z.object({
 export const registerVerifySchema = z.object({
   email: emailSchema,
   password: passwordSchema.optional(),
-  credential: credentialSchema,
+  credential: registrationCredentialSchema,
   fingerprintTemplate: z.string().optional(),
   description: z.string().optional(),
   isBiometric: z.boolean().optional(),
@@ -42,7 +78,7 @@ export const loginOptionsSchema = z.object({
 
 export const loginVerifySchema = z.object({
   email: emailSchema,
-  credential: credentialSchema,
+  credential: authenticationCredentialSchema,
   fingerprintTemplate: z.string().optional(),
 });
 

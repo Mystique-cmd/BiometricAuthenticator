@@ -134,7 +134,16 @@ describe("Auth flows", () => {
       body: JSON.stringify({
         email: user.email,
         password: "secret123",
-        credential: { id: "abc", response: {}, type: "public-key" },
+        credential: {
+          id: "abc",
+          rawId: "abc",
+          response: {
+            clientDataJSON: "client-data",
+            attestationObject: "attestation-object",
+          },
+          type: "public-key",
+          clientExtensionResults: {},
+        },
       }),
     });
     const res = await registerVerify(req);
@@ -206,7 +215,17 @@ describe("Auth flows", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: user.email,
-        credential: { id: credentialId, response: {}, type: "public-key" },
+        credential: {
+          id: credentialId,
+          rawId: credentialId,
+          response: {
+            clientDataJSON: "client-data",
+            authenticatorData: "auth-data",
+            signature: "signature",
+          },
+          type: "public-key",
+          clientExtensionResults: {},
+        },
       }),
     });
     const res = await loginVerify(req);

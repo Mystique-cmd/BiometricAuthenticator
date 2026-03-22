@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   browserSupportsWebAuthn,
+  platformAuthenticatorIsAvailable,
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
@@ -49,7 +50,30 @@ export function useAuthPanel(initialMode: Mode = "signup") {
   );
 
   useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
+    let cancelled = false;
+
+    async function detectWebAuthnSupport() {
+      if (!browserSupportsWebAuthn()) {
+        if (!cancelled) setWebauthnSupported(false);
+        return;
+      }
+
+      try {
+        const hasPlatformAuthenticator =
+          await platformAuthenticatorIsAvailable();
+        if (!cancelled) {
+          setWebauthnSupported(hasPlatformAuthenticator);
+        }
+      } catch {
+        if (!cancelled) setWebauthnSupported(false);
+      }
+    }
+
+    void detectWebAuthnSupport();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signupErrors = useMemo(() => {
@@ -86,14 +110,6 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       setAttempted((prev) => ({ ...prev, signup: true }));
       return;
     }
-    if (webauthnSupported === false) {
-      setStatus({
-        kind: "error",
-        message: "Fingerprint is required to complete signup.",
-      });
-      return;
-    }
-
     setStatus({ kind: "busy", message: "Starting registration..." });
 
     try {
@@ -109,6 +125,16 @@ export function useAuthPanel(initialMode: Mode = "signup") {
         throw new Error(
           (createRes.json.error as string) || "User creation failed",
         );
+      }
+
+      if (webauthnSupported === false) {
+        setStatus({
+          kind: "success",
+          message:
+            "Account created with password only. This device does not support biometric registration.",
+        });
+        setMode("login");
+        return;
       }
 
       const optionsRes = await getRegisterOptions(email);
@@ -144,7 +170,7 @@ export function useAuthPanel(initialMode: Mode = "signup") {
       return;
     }
 
-    if (!webauthnSupported) {
+    if (webauthnSupported !== true) {
       await handlePasswordFallback();
       return;
     }

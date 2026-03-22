@@ -42,14 +42,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const verification = await verifyRegistration(
-      credential,
-      challenge.challenge,
-      {
+    let verification;
+    try {
+      verification = await verifyRegistration(credential, challenge.challenge, {
         expectedOrigin: challenge.origin,
         expectedRPID: challenge.rpId,
-      },
-    );
+      });
+    } catch (error: unknown) {
+      console.error("WebAuthn registration verification failed:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
     if (verification.verified && verification.registrationInfo) {
       const registrationCredential = verification.registrationInfo.credential;
@@ -106,6 +109,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ verified: false }, { status: 400 });
   } catch (error: unknown) {
+    console.error("Register verification failed:", error);
     const status =
       error instanceof Error && error.message === "Invalid request"
         ? 400
