@@ -34,7 +34,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ options });
-  } catch {
+  } catch (error) {
+    console.error("Error in login-options API:", error);
     return NextResponse.json(
       { error: "Unable to initiate login" },
       { status: 500 },

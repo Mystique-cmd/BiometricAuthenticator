@@ -37,7 +37,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ options });
-  } catch {
+  } catch (error) {
+    console.error("Error in register-options API:", error);
     return NextResponse.json(
       { error: "Unable to initiate registration" },
       { status: 400 },

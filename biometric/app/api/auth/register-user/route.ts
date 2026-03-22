@@ -19,6 +19,13 @@ export async function POST(req: Request) {
     });
 
     if (existing) {
+      console.error(
+        "409 Conflict during user registration:",
+        "Existing user found:",
+        existing,
+        "Request body:",
+        body,
+      );
       return NextResponse.json(
         { error: "Unable to create user" },
         { status: 409 },
@@ -50,7 +57,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ created: true });
-  } catch {
+  } catch (error) {
+    console.error("Error in register-user API:", error);
     return NextResponse.json(
       { error: "Unable to create user" },
       { status: 400 },
