@@ -12,6 +12,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/browser";
 import {
+  fetchUserRole,
   getLoginOptions,
   getRegisterOptions,
   passwordLogin,
@@ -48,6 +49,7 @@ export function useAuthPanel(initialMode: Mode = "signup") {
   const [webauthnSupported, setWebauthnSupported] = useState<boolean | null>(
     null,
   );
+  const [userRole, setUserRole] = useState<string | null>(null); // New state for user role
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +198,11 @@ export function useAuthPanel(initialMode: Mode = "signup") {
             throw new Error((verifyRes.json.error as string) || "Biometric login failed");
           }
           setStatus({ kind: "success", message: "Login successful (biometric)." });
+
+          const { role } = await fetchUserRole(); // Fetch user role after successful login
+          if (role) {
+            setUserRole(role);
+          }
           return; // Exit after successful biometric login
 
         } catch (biometricError: unknown) {
@@ -232,6 +239,11 @@ export function useAuthPanel(initialMode: Mode = "signup") {
         throw new Error((res.json.error as string) || "Login failed");
       }
       setStatus({ kind: "success", message: "Login successful (password)." });
+
+      const { role } = await fetchUserRole(); // Fetch user role after successful login
+      if (role) {
+        setUserRole(role);
+      }
     } catch (error: unknown) {
       setStatus({ kind: "error", message: getErrorMessage(error) });
     }
@@ -260,5 +272,7 @@ export function useAuthPanel(initialMode: Mode = "signup") {
     showValidation,
     validationSummary,
     webauthnSupported,
+    userRole, // Return userRole
   };
 }
+

@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuthPanel } from "@/hooks/useAuthPanel";
-import StatusBanner from "./auth/StatusBanner"; // Assuming StatusBanner is available
+import StatusBanner from "./auth/StatusBanner";
+import ValidationSummary from "./auth/ValidationSummary"; // Import ValidationSummary
 
 const RegisterForm = () => {
   const {
@@ -98,7 +99,8 @@ const RegisterForm = () => {
       <button type="submit" disabled={status.kind === "busy"}>
         Register
       </button>
-      <StatusBanner messages={validationSummary} status={status} />
+      <ValidationSummary messages={validationSummary} /> {/* Use ValidationSummary for messages */}
+      <StatusBanner status={status} /> {/* Use StatusBanner for status */}
     </form>
   );
 };

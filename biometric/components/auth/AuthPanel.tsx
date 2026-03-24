@@ -39,13 +39,18 @@ export default function AuthPanel({
     showValidation,
     validationSummary,
     webauthnSupported,
+    userRole,
   } = useAuthPanel(initialMode);
 
   useEffect(() => {
-    if (status.kind === "success" && mode === "login") {
-      router.push("/dashboard"); // Redirect to dashboard on successful login
+    if (status.kind === "success" && mode === "login" && userRole) {
+      if (userRole === "admin") { // Assuming "admin" is the role for administrators
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     }
-  }, [status.kind, mode, router]);
+  }, [status.kind, mode, router, userRole]);
 
   return (
     <div

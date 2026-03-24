@@ -86,3 +86,12 @@ export async function passwordLogin(payload: {
   const json = await parseJson(res);
   return { res, json };
 }
+
+export async function fetchUserRole(): Promise<{ role?: string }> {
+  const res = await fetch("/api/auth/me", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  const json = await parseJson(res);
+  return { role: json.role as string };
+}
