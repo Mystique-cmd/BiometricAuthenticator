@@ -1,8 +1,18 @@
-import { sign, type SignOptions, verify } from "jsonwebtoken";
+import {
+  sign,
+  type SignOptions,
+  verify,
+  type JwtPayload,
+} from "jsonwebtoken";
 
 const JWT_TTL = (process.env.JWT_TTL ?? "1h") as SignOptions["expiresIn"];
 
 export type AuthMethod = "webauthn" | "password";
+type DecodedJwt = JwtPayload & {
+  email?: string;
+  role?: string;
+  authMethod?: AuthMethod;
+};
 
 export function issueJwt(payload: {
   userId: string;
@@ -27,17 +37,20 @@ export function issueJwt(payload: {
   );
 }
 
-export async function verifyJwt(token: string) {
+export async function verifyJwt(token: string): Promise<DecodedJwt> {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
     throw new Error("JWT_SECRET is required");
   }
-  return new Promise<any>((resolve, reject) => {
+  return new Promise<DecodedJwt>((resolve, reject) => {
     verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         return reject(err);
       }
-      resolve(decoded);
+      if (!decoded || typeof decoded === "string") {
+        return reject(new Error("Invalid token payload"));
+      }
+      resolve(decoded as DecodedJwt);
     });
   });
 }
