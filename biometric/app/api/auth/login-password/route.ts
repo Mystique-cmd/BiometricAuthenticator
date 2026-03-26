@@ -22,14 +22,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const hasAuthenticators = (user.authenticators ?? []).length > 0;
-    if (hasAuthenticators && !webauthnUnsupported) {
-      return NextResponse.json(
-        { error: "Unable to verify login" },
-        { status: 400 },
-      );
-    }
-
     if (!user.password) {
       return NextResponse.json(
         { error: "Unable to verify login" },
