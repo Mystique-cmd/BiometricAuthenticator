@@ -1,5 +1,6 @@
-#Live Link
-[https://bioauth-dbj6waej0-mystique-cmds-projects.vercel.app/dashboard]
+##Live Link
+
+[https://bioauth-nine.vercel.app/]
 # BiometricAuthenticator
 
 This project implements a biometric authentication system using Next.js, WebAuthn, MongoDB, and Mongoose. It supports fingerprint template storage with AES encryption, role-based access control (RBAC) for admin functionalities, and JWT-based authentication.
