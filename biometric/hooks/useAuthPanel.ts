@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   browserSupportsWebAuthn,
@@ -32,6 +33,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export function useAuthPanel(initialMode: Mode = "signup") {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -137,6 +139,7 @@ export function useAuthPanel(initialMode: Mode = "signup") {
             "Account created with password only. This device does not support biometric registration.",
         });
         setMode("login");
+        router.push("/dashboard");
         return;
       }
 
@@ -157,6 +160,8 @@ export function useAuthPanel(initialMode: Mode = "signup") {
           (verifyRes.json.error as string) || "Registration failed",
         );
       }
+      setStatus({ kind: "success", message: "Registration successful." });
+      router.push("/dashboard");
     } catch (error: unknown) {
       setStatus({
         kind: "error",
